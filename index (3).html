@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PeakView — Only the Most Viewed</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #f0f0f0;
+      --surface:   #ffffff;
+      --border:    #d8d8d8;
+      --accent:    #ff3c3c;
+      --accent2:   #e85d2f;
+      --text:      #1a1a1a;
+      --muted:     #666666;
+      --card:      #ffffff;
+      --glow:      rgba(255,60,60,0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── GRID NOISE BACKGROUND ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* ── TOP GLOW ── */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px; left: 50%; transform: translateX(-50%);
+      width: 700px; height: 400px;
+      background: radial-gradient(ellipse, rgba(255,60,60,0.07) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── NAVBAR ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(20px);
+      background: rgba(240,240,240,0.92);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ff3c3c, #ff7b54);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .logo span { -webkit-text-fill-color: var(--text); }
+    .badge {
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 1.5px;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      padding: 3px 10px; border-radius: 20px;
+      color: #444444;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; z-index: 1;
+      padding: 5rem 2rem 3rem;
+      text-align: center;
+    }
+    .hero-tag {
+      display: inline-block;
+      font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--accent2);
+      background: rgba(255,123,84,0.1);
+      border: 1px solid rgba(255,123,84,0.25);
+      padding: 5px 14px; border-radius: 20px;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      margin-bottom: 1rem;
+    }
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, #ff3c3c 20%, #ff7b54 80%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-sub {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 480px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    /* ── API KEY SECTION ── */
+    .config-panel {
+      position: relative; z-index: 1;
+      max-width: 720px;
+      margin: 0 auto 2rem;
+      padding: 0 1.5rem;
+    }
+    .config-toggle {
+      display: flex; align-items: center; gap: 8px;
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem; padding: 6px 14px; border-radius: 8px;
+      cursor: pointer; transition: all .2s;
+      margin-bottom: 12px;
+    }
+    .config-toggle:hover { border-color: var(--accent); color: var(--text); }
+    .config-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      display: none;
+      animation: slideDown .2s ease;
+    }
+    .config-box.open { display: block; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .config-row {
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 10px; align-items: end;
+      margin-bottom: .8rem;
+    }
+    .config-row:last-child { margin-bottom: 0; }
+    label.cfg {
+      display: block;
+      font-size: 0.75rem; letter-spacing: .8px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 6px;
+    }
+    input.cfg-input {
+      width: 100%; background: #f8f8f8;
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
+      outline: none; transition: border-color .2s;
+    }
+    input.cfg-input:focus { border-color: var(--accent); }
+    input.cfg-input::placeholder { color: #aaaaaa; }
+    .btn-save {
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 8px;
+      padding: 9px 18px; font-size: 0.82rem; font-weight: 600;
+      font-family: 'DM Sans', sans-serif; cursor: pointer;
+      transition: opacity .2s; white-space: nowrap;
+    }
+    .btn-save:hover { opacity: .85; }
+    .status-dot {
+      display: inline-block; width: 7px; height: 7px;
+      border-radius: 50%; margin-right: 6px;
+    }
+    .status-dot.ok  { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+    .status-dot.err { background: var(--accent); }
+    .status-dot.idle { background: var(--muted); }
+
+    /* ── SEARCH BOX ── */
+    .search-wrap {
+      position: relative; z-index: 1;
+      max-width: 720px; margin: 0 auto 3.5rem;
+      padding: 0 1.5rem;
+    }
+    .search-bar {
+      display: flex; gap: 0;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      transition: border-color .25s, box-shadow .25s;
+    }
+    .search-bar:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--glow);
+    }
+    #searchInput {
+      flex: 1; background: none; border: none;
+      padding: 1rem 1.4rem;
+      color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: 1rem; outline: none;
+    }
+    #searchInput::placeholder { color: #aaaaaa; }
+    #searchBtn {
+      background: linear-gradient(135deg, #ff3c3c, #ff6b3c);
+      border: none; padding: 0 1.8rem;
+      color: #fff; font-family: 'Syne', sans-serif;
+      font-size: 0.88rem; font-weight: 700;
+      letter-spacing: .5px; cursor: pointer;
+      transition: opacity .2s; white-space: nowrap;
+    }
+    #searchBtn:hover { opacity: .88; }
+    #searchBtn:disabled { opacity: .4; cursor: not-allowed; }
+    .search-hint {
+      font-size: 0.75rem; color: var(--muted);
+      margin-top: .6rem; padding: 0 .5rem;
+      display: flex; gap: 1.2rem;
+    }
+    .search-hint span::before { content: '✦ '; color: var(--accent); font-size: .6rem; }
+
+    /* ── AI THINKING BANNER ── */
+    #thinkingBanner {
+      display: none;
+      position: relative; z-index: 1;
+      max-width: 720px; margin: 0 auto 1.5rem;
+      padding: 0 1.5rem;
+    }
+    .thinking-card {
+      background: var(--surface);
+      border: 1px solid rgba(255,60,60,0.25);
+      border-radius: 12px; padding: 1rem 1.4rem;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .pulse-ring {
+      width: 32px; height: 32px; flex-shrink: 0;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.15); opacity: .5; }
+    }
+    .thinking-text {
+      font-size: .88rem; color: var(--muted);
+      line-height: 1.5;
+    }
+    .thinking-text strong { color: var(--text); }
+    #agentThought { color: var(--accent2); font-style: italic; font-size: .83rem; margin-top: 2px; }
+
+    /* ── RESULTS ── */
+    #results {
+      position: relative; z-index: 1;
+      max-width: 900px; margin: 0 auto;
+      padding: 0 1.5rem 5rem;
+    }
+    .results-header {
+      display: flex; align-items: baseline; gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+    .results-header h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.1rem; font-weight: 700;
+    }
+    .results-count {
+      font-size: .8rem; color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 10px; border-radius: 20px;
+    }
+    .query-refined {
+      font-size: .8rem; color: var(--accent2);
+      margin-bottom: 1.5rem; margin-top: -.8rem;
+    }
+    .query-refined span { color: var(--muted); }
+
+    /* ── VIDEO CARDS ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 1.5rem;
+    }
+    .video-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      transition: transform .25s, border-color .25s, box-shadow .25s;
+      cursor: pointer;
+      text-decoration: none; color: inherit;
+      display: block;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .video-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255,60,60,0.4);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,60,60,0.1);
+    }
+    .thumb-wrap {
+      position: relative;
+      aspect-ratio: 16/9; overflow: hidden;
+    }
+    .thumb-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform .4s;
+    }
+    .video-card:hover .thumb-wrap img { transform: scale(1.04); }
+    .rank-badge {
+      position: absolute; top: 10px; left: 10px;
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: .72rem; letter-spacing: 1px;
+      background: var(--accent);
+      color: #fff; padding: 3px 10px; border-radius: 6px;
+    }
+    .duration-badge {
+      position: absolute; bottom: 8px; right: 8px;
+      background: rgba(0,0,0,0.82);
+      font-size: .72rem; font-weight: 500;
+      padding: 2px 7px; border-radius: 4px;
+      color: #fff;
+    }
+    .play-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,60,60,0);
+      transition: background .25s;
+    }
+    .video-card:hover .play-overlay { background: rgba(255,60,60,0.08); }
+    .play-icon {
+      width: 52px; height: 52px;
+      background: rgba(255,255,255,0.9);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transform: scale(.8);
+      transition: opacity .25s, transform .25s;
+    }
+    .play-icon svg { width: 20px; fill: #111; margin-left: 3px; }
+    .video-card:hover .play-icon { opacity: 1; transform: scale(1); }
+
+    .card-body { padding: 1.1rem 1.2rem 1.2rem; }
+    .card-channel {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: .55rem;
+    }
+    .channel-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: linear-gradient(135deg, #ff3c3c, #ff7b54);
+      flex-shrink: 0;
+    }
+    .channel-name {
+      font-size: .78rem; color: var(--accent2);
+      font-weight: 500; letter-spacing: .3px;
+    }
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 700;
+      line-height: 1.35; margin-bottom: .8rem;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .card-meta {
+      display: flex; gap: 1rem;
+      font-size: .78rem; color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: .7rem; margin-top: .2rem;
+    }
+    .meta-item { display: flex; align-items: center; gap: 5px; }
+    .meta-item svg { width: 13px; height: 13px; fill: var(--muted); }
+    .views-highlight { color: #4ade80; font-weight: 600; }
+
+    /* ── AI SUMMARY CARD ── */
+    .ai-summary {
+      background: var(--surface);
+      border: 1px solid rgba(255,123,84,0.2);
+      border-radius: 14px; padding: 1.2rem 1.4rem;
+      margin-bottom: 2rem;
+    }
+    .ai-summary-head {
+      display: flex; align-items: center; gap: 8px;
+      font-size: .72rem; letter-spacing: 1.2px; text-transform: uppercase;
+      color: var(--accent2); margin-bottom: .65rem;
+    }
+    .ai-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); }
+    .ai-summary p { font-size: .9rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── ERROR / EMPTY STATES ── */
+    .state-box {
+      text-align: center; padding: 4rem 2rem;
+    }
+    .state-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .state-title {
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem;
+      margin-bottom: .5rem;
+    }
+    .state-msg { color: var(--muted); font-size: .9rem; line-height: 1.6; }
+    .state-msg a { color: var(--accent2); }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f0f0f0; }
+    ::-webkit-scrollbar-thumb { background: #cccccc; border-radius: 3px; }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative; z-index: 1;
+      text-align: center;
+      font-size: .75rem; color: var(--muted);
+      padding: 2rem;
+      border-top: 1px solid var(--border);
+    }
+    footer strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Peak<span>View</span></div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span id="navStatus" style="font-size:.75rem;color:var(--muted);">
+      <span class="status-dot idle" id="statusDot"></span>Ready
+    </span>
+    <span class="badge">Agent v1.0</span>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-tag">🏔️ PeakView — Only the Most Viewed</div>
+  <h1>Find Videos That <em>Actually</em><br/>Dominate Views</h1>
+  <p class="hero-sub">Our AI agent refines your query, searches YouTube, and surfaces the <strong>top 2 most-viewed</strong> videos — with zero noise.</p>
+</section>
+
+<!-- CONFIG PANEL -->
+<div class="config-panel">
+  <button class="config-toggle" onclick="toggleConfig()">
+    ⚙ Configure API Keys &nbsp;<span id="configArrow">▼</span>
+  </button>
+  <div class="config-box" id="configBox">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label class="cfg">YouTube Data API v3 Key</label>
+        <input class="cfg-input" type="password" id="ytKeyInput" placeholder="AIza..." />
+      </div>
+      <div>
+        <label class="cfg">Anthropic API Key</label>
+        <input class="cfg-input" type="password" id="anthropicKeyInput" placeholder="sk-ant-..." />
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="btn-save" onclick="saveKeys()">Save Keys</button>
+      <span id="keyStatus" style="font-size:.8rem;color:var(--muted);">No keys saved</span>
+    </div>
+    <p style="font-size:.72rem;color:var(--muted);margin-top:.8rem;">
+      🔒 Keys are stored only in your browser session memory — never sent to any server except the respective APIs.
+      Get YouTube key at <a href="https://console.cloud.google.com" target="_blank" style="color:var(--accent2)">Google Cloud Console</a>.
+    </p>
+  </div>
+</div>
+
+<!-- SEARCH -->
+<div class="search-wrap">
+  <div class="search-bar">
+    <input id="searchInput" type="text" placeholder="Search any video topic…" autocomplete="off"/>
+    <button id="searchBtn" onclick="runSearch()">Search ⚡</button>
+  </div>
+  <div class="search-hint">
+    <span>Top 2 by views only</span>
+    <span>AI-enhanced query</span>
+    <span>Real-time YouTube data</span>
+  </div>
+</div>
+
+<!-- THINKING BANNER -->
+<div id="thinkingBanner">
+  <div class="thinking-card">
+    <div class="pulse-ring"></div>
+    <div class="thinking-text">
+      <strong id="thinkingStep">AI Agent is thinking…</strong>
+      <div id="agentThought">Interpreting your query…</div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="results"></div>
+
+<footer>
+  <strong>PeakView</strong> — Only the Most Viewed &nbsp;·&nbsp; Powered by Claude AI + YouTube Data API v3
+</footer>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let YT_KEY = '';
+let ANTHROPIC_KEY = '';
+
+function toggleConfig() {
+  const box = document.getElementById('configBox');
+  const arrow = document.getElementById('configArrow');
+  const open = box.classList.toggle('open');
+  arrow.textContent = open ? '▲' : '▼';
+}
+
+function saveKeys() {
+  YT_KEY = document.getElementById('ytKeyInput').value.trim();
+  ANTHROPIC_KEY = document.getElementById('anthropicKeyInput').value.trim();
+  const status = document.getElementById('keyStatus');
+  if (YT_KEY && ANTHROPIC_KEY) {
+    status.innerHTML = '<span class="status-dot ok"></span> Both keys saved ✓';
+    setNavStatus('Configured', 'ok');
+  } else if (YT_KEY) {
+    status.innerHTML = '<span class="status-dot ok"></span> YouTube key saved (AI query enhancement disabled)';
+    setNavStatus('YT Only', 'ok');
+  } else {
+    status.innerHTML = '<span class="status-dot err"></span> At least YouTube key required';
+    setNavStatus('No Key', 'err');
+  }
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function formatViews(n) {
+  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + 'B';
+  if (n >= 1_000_000)     return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)         return (n / 1_000).toFixed(1) + 'K';
+  return n.toString();
+}
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+function parseDuration(iso) {
+  if (!iso) return '';
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return '';
+  const h = parseInt(m[1]||0), min = parseInt(m[2]||0), s = parseInt(m[3]||0);
+  if (h) return `${h}:${String(min).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${min}:${String(s).padStart(2,'0')}`;
+}
+
+function setThinking(visible, step = '', thought = '') {
+  const banner = document.getElementById('thinkingBanner');
+  banner.style.display = visible ? 'block' : 'none';
+  if (visible) {
+    document.getElementById('thinkingStep').textContent = step;
+    document.getElementById('agentThought').textContent = thought;
+  }
+}
+
+function setNavStatus(label, state = 'ok') {
+  document.getElementById('navStatus').innerHTML =
+    `<span class="status-dot ${state}"></span>${label}`;
+}
+
+// ─── AI QUERY REFINEMENT ────────────────────────────────────────────────────
+async function refineQuery(rawQuery) {
+  if (!ANTHROPIC_KEY) return { refined: rawQuery, summary: null };
+
+  const body = {
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 300,
+    messages: [{
+      role: 'user',
+      content: `You are a YouTube search expert. Given a raw user search query, generate:
+1. An optimized YouTube search query string (max 8 words, highly specific for best video results)
+2. A one-sentence description of what the user is looking for
+
+Respond ONLY with valid JSON, no markdown fences:
+{"refined":"<optimized query>","description":"<one sentence description>"} 
+
+User query: "${rawQuery}"`
+    }]
+  };
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('Anthropic API error');
+    const data = await res.json();
+    const text = data.content[0].text.replace(/```json|```/g,'').trim();
+    return JSON.parse(text);
+  } catch(e) {
+    console.warn('AI refinement failed, using raw query', e);
+    return { refined: rawQuery, summary: null };
+  }
+}
+
+// ─── AI RESULT SUMMARY ───────────────────────────────────────────────────────
+async function generateSummary(query, videos) {
+  if (!ANTHROPIC_KEY || !videos.length) return null;
+  const info = videos.map((v,i) =>
+    `${i+1}. "${v.title}" by ${v.channel} — ${formatViews(v.views)} views, published ${formatDate(v.publishedAt)}`
+  ).join('\n');
+  const body = {
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 200,
+    messages: [{
+      role: 'user',
+      content: `Given these top 2 YouTube videos for the search "${query}":
+${info}
+
+Write a 2-sentence insightful summary about why these are the most-viewed results and what makes them stand out. Be concise and analytical.`
+    }]
+  };
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    return data.content[0].text;
+  } catch { return null; }
+}
+
+// ─── DEMO DATA (shown when no API key) ───────────────────────────────────────
+const DEMO_VIDEOS = {
+  'pilates': [
+    { id: 'g_tea8r9_E4', title: '30-Minute Full Body Pilates Workout (No Equipment)', channel: 'MommaStrong', publishedAt: '2021-03-15T00:00:00Z', thumbnail: 'https://i.ytimg.com/vi/g_tea8r9_E4/hqdefault.jpg', views: 28500000, likes: 412000, duration: '30:14' },
+    { id: 'RnFgPzTm35I', title: 'Beginner Pilates for Core Strength | 20 Min', channel: 'Blogilates', publishedAt: '2020-06-01T00:00:00Z', thumbnail: 'https://i.ytimg.com/vi/RnFgPzTm35I/hqdefault.jpg', views: 19200000, likes: 280000, duration: '20:05' }
+  ]
+};
+
+function getDemoVideos(query) {
+  const key = Object.keys(DEMO_VIDEOS).find(k => query.toLowerCase().includes(k));
+  return key ? DEMO_VIDEOS[key] : DEMO_VIDEOS['pilates'];
+}
+
+// ─── YOUTUBE SEARCH ──────────────────────────────────────────────────────────
+async function searchYouTube(query) {
+  // Step 1: Search for video IDs
+  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${encodeURIComponent(query)}&key=${YT_KEY}`;
+  let searchRes;
+  try {
+    searchRes = await fetch(searchUrl);
+  } catch (networkErr) {
+    throw new Error('Network error — could not reach YouTube API. Check your internet connection or that the API key has no IP/referrer restrictions in Google Cloud Console.');
+  }
+
+  if (!searchRes.ok) {
+    let errMsg = 'YouTube API error';
+    try {
+      const errData = await searchRes.json();
+      const reason = errData.error?.errors?.[0]?.reason || '';
+      const msg    = errData.error?.message || '';
+      if (searchRes.status === 400) errMsg = `Bad request — your API key may be invalid or malformed. (${msg})`;
+      else if (searchRes.status === 403) {
+        if (reason === 'quotaExceeded') errMsg = 'YouTube API daily quota exceeded (10,000 units/day). Try again tomorrow or use a different API key.';
+        else if (reason === 'keyInvalid')  errMsg = 'Invalid YouTube API key. Double-check the key in Google Cloud Console and make sure YouTube Data API v3 is enabled.';
+        else errMsg = `Access denied (403). Ensure YouTube Data API v3 is enabled for this key in Google Cloud Console. (${msg})`;
+      }
+      else errMsg = msg || errMsg;
+    } catch {}
+    throw new Error(errMsg);
+  }
+
+  const searchData = await searchRes.json();
+  const ids = (searchData.items || []).map(i => i.id.videoId).filter(Boolean).join(',');
+  if (!ids) return [];
+
+  // Step 2: Get statistics + content details for those IDs
+  const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet,contentDetails&id=${ids}&key=${YT_KEY}`;
+  const statsRes = await fetch(statsUrl);
+  if (!statsRes.ok) throw new Error('Could not fetch video statistics from YouTube. Please try again.');
+  const statsData = await statsRes.json();
+
+  // Step 3: Sort by view count, take top 2
+  return (statsData.items || [])
+    .map(v => ({
+      id: v.id,
+      title: v.snippet.title,
+      channel: v.snippet.channelTitle,
+      publishedAt: v.snippet.publishedAt,
+      thumbnail: v.snippet.thumbnails?.maxres?.url
+               || v.snippet.thumbnails?.high?.url
+               || v.snippet.thumbnails?.medium?.url,
+      views: parseInt(v.statistics?.viewCount || 0),
+      likes: parseInt(v.statistics?.likeCount || 0),
+      duration: parseDuration(v.contentDetails?.duration)
+    }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 2);
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function renderResults(videos, refinedQuery, originalQuery, summary) {
+  const container = document.getElementById('results');
+  if (!videos.length) {
+    container.innerHTML = `<div class="state-box">
+      <div class="state-icon">🎬</div>
+      <div class="state-title">No videos found</div>
+      <div class="state-msg">Try a different search term or check your YouTube API key.</div>
+    </div>`;
+    return;
+  }
+
+  const wasRefined = refinedQuery !== originalQuery;
+
+  let html = `<div class="results-header">
+    <h2>Top Results</h2>
+    <span class="results-count">${videos.length} video${videos.length>1?'s':''} · sorted by views</span>
+  </div>`;
+
+  if (wasRefined) {
+    html += `<div class="query-refined"><span>🤖 AI refined your query to: </span>"${refinedQuery}"</div>`;
+  }
+
+  if (summary) {
+    html += `<div class="ai-summary">
+      <div class="ai-summary-head"><span class="ai-dot"></span>AI Insight</div>
+      <p>${summary}</p>
+    </div>`;
+  }
+
+  html += `<div class="cards-grid">`;
+  const ranks = ['#1 MOST VIEWED', '#2 MOST VIEWED'];
+  videos.forEach((v, i) => {
+    html += `
+    <a class="video-card" href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener">
+      <div class="thumb-wrap">
+        <img src="${v.thumbnail}" alt="${v.title.replace(/"/g,'')}" loading="lazy"/>
+        <div class="rank-badge">${ranks[i]}</div>
+        ${v.duration ? `<div class="duration-badge">${v.duration}</div>` : ''}
+        <div class="play-overlay">
+          <div class="play-icon">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-channel">
+          <div class="channel-dot"></div>
+          <span class="channel-name">${v.channel}</span>
+        </div>
+        <div class="card-title">${v.title}</div>
+        <div class="card-meta">
+          <span class="meta-item">
+            <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            <span class="views-highlight">${formatViews(v.views)}</span>
+          </span>
+          <span class="meta-item">
+            <svg viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+            ${formatViews(v.likes)}
+          </span>
+          <span class="meta-item" style="margin-left:auto;">
+            <svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+            ${formatDate(v.publishedAt)}
+          </span>
+        </div>
+      </div>
+    </a>`;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function renderError(msg) {
+  document.getElementById('results').innerHTML = `
+    <div class="state-box">
+      <div class="state-icon">⚠️</div>
+      <div class="state-title">Something went wrong</div>
+      <div class="state-msg">${msg}</div>
+    </div>`;
+}
+
+// ─── MAIN FLOW ────────────────────────────────────────────────────────────────
+async function runSearch() {
+  const rawQuery = document.getElementById('searchInput').value.trim();
+  if (!rawQuery) return;
+
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+  document.getElementById('results').innerHTML = '';
+  setNavStatus('Working…', 'idle');
+
+  // ── DEMO MODE: no API key ──────────────────────────────────────────────────
+  if (!YT_KEY) {
+    setThinking(true, '🎬 Demo Mode', 'No YouTube API key — showing sample pilates results…');
+    await new Promise(r => setTimeout(r, 1200));
+    setThinking(false);
+    const demoVideos = getDemoVideos(rawQuery);
+    renderResults(demoVideos, rawQuery, rawQuery,
+      '⚠️ Demo mode — these are sample results. Add your YouTube API key in the config panel above to get real live results for any search.');
+    setNavStatus('Demo', 'idle');
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    // ── Step 1: AI query refinement ──
+    setThinking(true, '🤖 Step 1 / 3 — AI Agent Thinking', 'Refining your search query for maximum relevance…');
+    const { refined } = await refineQuery(rawQuery);
+
+    // ── Step 2: YouTube search ──
+    setThinking(true, '🔍 Step 2 / 3 — Searching YouTube', `Query: "${refined}" — fetching top candidates…`);
+    const videos = await searchYouTube(refined);
+
+    // ── Step 3: AI summary ──
+    let summary = null;
+    if (videos.length) {
+      setThinking(true, '✍️ Step 3 / 3 — Generating Insight', 'Analyzing the top videos and crafting a summary…');
+      summary = await generateSummary(refined, videos);
+    }
+
+    setThinking(false);
+    renderResults(videos, refined, rawQuery, summary);
+    setNavStatus('Done', 'ok');
+
+  } catch(e) {
+    setThinking(false);
+    renderError(`<strong>Error:</strong> ${e.message}<br/><br/>
+      <span style="font-size:.82rem;color:var(--muted)">Common fixes:<br/>
+      • Make sure <strong>YouTube Data API v3</strong> is enabled in <a href="https://console.cloud.google.com" target="_blank" style="color:var(--accent2)">Google Cloud Console</a><br/>
+      • Check the API key has no HTTP referrer restrictions<br/>
+      • Confirm you haven't exceeded the 10,000 unit/day free quota</span>`);
+    setNavStatus('Error', 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Enter key support
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runSearch();
+});
+</script>
+</body>
+</html>
