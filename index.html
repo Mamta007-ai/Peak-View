@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -113,63 +113,7 @@
       font-weight: 300;
     }
 
-    /* ── API KEY SECTION ── */
-    .config-panel {
-      position: relative; z-index: 1;
-      max-width: 720px;
-      margin: 0 auto 2rem;
-      padding: 0 1.5rem;
-    }
-    .config-toggle {
-      display: flex; align-items: center; gap: 8px;
-      background: none; border: 1px solid var(--border);
-      color: var(--muted); font-family: 'DM Sans', sans-serif;
-      font-size: 0.82rem; padding: 6px 14px; border-radius: 8px;
-      cursor: pointer; transition: all .2s;
-      margin-bottom: 12px;
-    }
-    .config-toggle:hover { border-color: var(--accent); color: var(--text); }
-    .config-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.2rem;
-      display: none;
-      animation: slideDown .2s ease;
-    }
-    .config-box.open { display: block; }
-    @keyframes slideDown {
-      from { opacity: 0; transform: translateY(-8px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .config-row {
-      display: grid; grid-template-columns: 1fr auto;
-      gap: 10px; align-items: end;
-      margin-bottom: .8rem;
-    }
-    .config-row:last-child { margin-bottom: 0; }
-    label.cfg {
-      display: block;
-      font-size: 0.75rem; letter-spacing: .8px; text-transform: uppercase;
-      color: var(--muted); margin-bottom: 6px;
-    }
-    input.cfg-input {
-      width: 100%; background: #f8f8f8;
-      border: 1px solid var(--border); border-radius: 8px;
-      padding: 8px 12px; color: var(--text);
-      font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
-      outline: none; transition: border-color .2s;
-    }
-    input.cfg-input:focus { border-color: var(--accent); }
-    input.cfg-input::placeholder { color: #aaaaaa; }
-    .btn-save {
-      background: var(--accent); color: #fff;
-      border: none; border-radius: 8px;
-      padding: 9px 18px; font-size: 0.82rem; font-weight: 600;
-      font-family: 'DM Sans', sans-serif; cursor: pointer;
-      transition: opacity .2s; white-space: nowrap;
-    }
-    .btn-save:hover { opacity: .85; }
+
     .status-dot {
       display: inline-block; width: 7px; height: 7px;
       border-radius: 50%; margin-right: 6px;
@@ -431,32 +375,7 @@
   <p class="hero-sub">Our AI agent refines your query, searches YouTube, and surfaces the <strong>top 2 most-viewed</strong> videos — with zero noise.</p>
 </section>
 
-<!-- CONFIG PANEL -->
-<div class="config-panel">
-  <button class="config-toggle" onclick="toggleConfig()">
-    ⚙ Configure API Keys &nbsp;<span id="configArrow">▼</span>
-  </button>
-  <div class="config-box" id="configBox">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-      <div>
-        <label class="cfg">YouTube Data API v3 Key</label>
-        <input class="cfg-input" type="password" id="ytKeyInput" placeholder="AIza..." />
-      </div>
-      <div>
-        <label class="cfg">Anthropic API Key</label>
-        <input class="cfg-input" type="password" id="anthropicKeyInput" placeholder="sk-ant-..." />
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <button class="btn-save" onclick="saveKeys()">Save Keys</button>
-      <span id="keyStatus" style="font-size:.8rem;color:var(--muted);">No keys saved</span>
-    </div>
-    <p style="font-size:.72rem;color:var(--muted);margin-top:.8rem;">
-      🔒 Keys are stored only in your browser session memory — never sent to any server except the respective APIs.
-      Get YouTube key at <a href="https://console.cloud.google.com" target="_blank" style="color:var(--accent2)">Google Cloud Console</a>.
-    </p>
-  </div>
-</div>
+
 
 <!-- SEARCH -->
 <div class="search-wrap">
@@ -494,28 +413,7 @@
 let YT_KEY = 'AIzaSyBDNFFud2uS5Rod8TvKfguaSuLe35HjtTU';
 let ANTHROPIC_KEY = '';
 
-function toggleConfig() {
-  const box = document.getElementById('configBox');
-  const arrow = document.getElementById('configArrow');
-  const open = box.classList.toggle('open');
-  arrow.textContent = open ? '▲' : '▼';
-}
 
-function saveKeys() {
-  YT_KEY = document.getElementById('ytKeyInput').value.trim();
-  ANTHROPIC_KEY = document.getElementById('anthropicKeyInput').value.trim();
-  const status = document.getElementById('keyStatus');
-  if (YT_KEY && ANTHROPIC_KEY) {
-    status.innerHTML = '<span class="status-dot ok"></span> Both keys saved ✓';
-    setNavStatus('Configured', 'ok');
-  } else if (YT_KEY) {
-    status.innerHTML = '<span class="status-dot ok"></span> YouTube key saved (AI query enhancement disabled)';
-    setNavStatus('YT Only', 'ok');
-  } else {
-    status.innerHTML = '<span class="status-dot err"></span> At least YouTube key required';
-    setNavStatus('No Key', 'err');
-  }
-}
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function formatViews(n) {
@@ -787,12 +685,12 @@ async function runSearch() {
 
   // ── DEMO MODE: no API key ──────────────────────────────────────────────────
   if (!YT_KEY) {
-    setThinking(true, '🎬 Demo Mode', 'No YouTube API key — showing sample pilates results…');
+    setThinking(true, '🎬 Demo Mode', 'No YouTube API key set — showing sample results…');
     await new Promise(r => setTimeout(r, 1200));
     setThinking(false);
     const demoVideos = getDemoVideos(rawQuery);
     renderResults(demoVideos, rawQuery, rawQuery,
-      '⚠️ Demo mode — these are sample results. Add your YouTube API key in the config panel above to get real live results for any search.');
+      '⚠️ Demo mode — add your YouTube API key in the source code to get live results.');
     setNavStatus('Demo', 'idle');
     btn.disabled = false;
     return;
